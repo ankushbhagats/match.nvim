@@ -42,8 +42,15 @@ use {
 }
 ```
 
-### Command
-Open the Search & Replace UI: `Match`
+### Commands
+
+
+| Command | Description |
+|--------|-------------|
+| `:Match {text}` | Open Match UI with given search text |
+| `:MatchWord` | Open Match UI using word under cursor |
+| `:MatchLine` | Open Match UI using current line |
+
 
 ### ⌨️ Keybindings
 
