@@ -264,10 +264,10 @@ vim.api.nvim_create_user_command("MatchWord", function()
 	open(word)
 end, { nargs = 0, desc = "Match using word under cursor" })
 
-vim.api.nvim_create_user_command("MatchLine", function(opts)
+vim.api.nvim_create_user_command("MatchLine", function()
   local line = vim.fn.getline(".")
 	open(line)
-end, { range = true, nargs = 0, desc = "Match using selected range" })
+end, { range = true, nargs = 0, desc = "Match using current line" })
 
 function M.setup(opts)
 	M.config = vim.tbl_deep_extend("force", M.config, opts)
