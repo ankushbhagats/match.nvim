@@ -116,16 +116,16 @@ local function search(text, parent, win, buf)
 end
 
 local function replace()
-	if #searchText < 1 then
-		return
-	end
-	local parent = wins.search and wins.search.parent
-	close()
+	if #searchText < 1 then return end
+
+	local parent = wins.search.parent
 	if parent and vim.api.nvim_win_is_valid(parent) then
 		vim.api.nvim_set_current_win(parent)
 	end
-	vim.opt.hlsearch = false
+
 	vim.cmd(string.format("%%s/%s/%s/g", searchText, replaceText))
+  vim.opt.hlsearch = false
+  close()
 end
 
 local function jump(key, parent, win, buf)
