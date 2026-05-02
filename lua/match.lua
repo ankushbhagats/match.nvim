@@ -25,9 +25,7 @@ local function float(title, row, parent)
 	local opts = M.config
 	local width = 30
 	local height = 1
-
 	local buf = vim.api.nvim_create_buf(false, true)
-
 	local win = vim.api.nvim_open_win(buf, true, {
 		anchor = "NE",
 		title = title,
@@ -40,15 +38,16 @@ local function float(title, row, parent)
 		border = opts.border,
 	})
 
-	vim.wo[win].winhl =
-		string.format("NormalFloat:Normal,FloatBorder:%s,Search:None,IncSearch:None,CurSearch:None", opts.border_hl)
+	vim.wo[win].winhl = ("NormalFloat:Normal,FloatBorder:%s,Search:None,IncSearch:None,CurSearch:None"):format(
+		opts.border_hl
+	)
 	vim.bo[buf].buftype = "prompt"
 	vim.bo[buf].filetype = "match"
 	vim.bo[buf].bufhidden = "wipe"
 	vim.bo[buf].swapfile = false
 	vim.fn.prompt_setprompt(buf, opts.prefix)
 
-	wins[string.lower(title)] = { win = win, buf = buf, row = row, parent = parent }
+	wins[title:lower()] = { win = win, buf = buf, row = row, parent = parent }
 
 	return win, buf
 end
@@ -69,9 +68,7 @@ vim.api.nvim_create_autocmd("VimResized", {
 
 local function close()
 	for _, item in pairs(wins) do
-		if vim.api.nvim_win_is_valid(item.win) then
-			vim.api.nvim_win_close(item.win, true)
-		end
+		pcall(vim.api.nvim_win_close, item.win, true)
 	end
 end
 
@@ -79,19 +76,15 @@ local function switch()
 	local win = vim.api.nvim_get_current_win()
 
 	for _, item in pairs(wins) do
-		if vim.api.nvim_win_is_valid(item.win) then
-			if win ~= item.win then
-				vim.api.nvim_set_current_win(item.win)
-			end
+		if vim.api.nvim_win_is_valid(item.win) and win ~= item.win then
+			vim.api.nvim_set_current_win(item.win)
 		end
 	end
 end
 
 ---@param winid integer
 local function nvim_set_current_win(winid)
-	if vim.api.nvim_win_is_valid(winid) then
-		vim.api.nvim_set_current_win(winid)
-	end
+	pcall(vim.api.nvim_set_current_win, winid)
 end
 
 ---@param parent integer
@@ -103,9 +96,8 @@ local function searchcount(parent, win, buf)
 	nvim_set_current_win(win)
 
 	vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
-
 	vim.api.nvim_buf_set_extmark(buf, ns, 0, 0, {
-		virt_text = { { string.format("[%d/%d]", sc.current, sc.total), "Label" } },
+		virt_text = { { ("[%d/%d]"):format(sc.current, sc.total), "Label" } },
 		virt_text_pos = "right_align",
 	})
 end
@@ -117,7 +109,7 @@ end
 local function search(text, parent, win, buf)
 	if not text or text == "" then
 		vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
-		vim.opt.hlsearch = false
+		vim.cmd.noh()
 		searchText = ""
 		return
 	end
@@ -139,18 +131,20 @@ end
 ---@param win integer
 local function replace(parent, win)
 	if searchText == "" then
-		return vim.notify("Please enter a search term.", vim.log.levels.WARN)
+		vim.notify("Please enter a search term.", vim.log.levels.WARN)
+		return
 	end
 
 	nvim_set_current_win(parent)
 
 	if vim.fn.searchcount().current < 1 then
 		nvim_set_current_win(win)
-		return vim.notify("Pattern not found: " .. searchText, vim.log.levels.ERROR)
+		vim.notify(("Pattern not found: %s"):format(searchText), vim.log.levels.ERROR)
+		return
 	end
 
-  vim.opt.hlsearch = false
-	vim.cmd(string.format("%%s/%s/%s/g", searchText, replaceText))
+	vim.cmd.noh()
+	vim.cmd(("%%s/%s/%s/g"):format(searchText, replaceText))
 	close()
 end
 
@@ -164,7 +158,7 @@ local function jump(key, parent, win, buf)
 	end
 
 	nvim_set_current_win(parent)
-	vim.cmd("silent! normal! " .. key)
+	vim.cmd.normal({ args = { key }, bang = true })
 	searchcount(parent, win, buf)
 	nvim_set_current_win(win)
 end
@@ -175,14 +169,15 @@ local function replaceJump(key, parent)
 	local searchWin = wins.search.win
 	local searchBuf = wins.search.buf
 	local replaceWin = wins.replace.win
+
 	if not vim.api.nvim_win_is_valid(parent) or searchText == "" then
 		return
 	end
 
 	nvim_set_current_win(parent)
 	-- vim.fn.search(searchText, key)
-	vim.cmd('silent! normal! "_cg' .. key .. replaceText .. "\27")
-	vim.cmd("silent! normal! " .. key)
+	vim.cmd.normal({ args = { '"_cg' .. key .. replaceText .. "\27" }, bang = true })
+	vim.cmd.normal({ args = { key }, bang = true })
 	searchcount(parent, searchWin, searchBuf)
 	nvim_set_current_win(replaceWin)
 	replaceCount = replaceCount + 1
@@ -194,14 +189,7 @@ end
 local function history(key, parent, win)
 	key = vim.api.nvim_replace_termcodes(key, true, false, true)
 
-	local nextCount = historyCount
-
-	if key == "u" then
-		nextCount = nextCount + 1
-	else
-		nextCount = nextCount - 1
-	end
-
+	local nextCount = historyCount + (key == "u" and 1 or -1)
 	if nextCount > replaceCount or nextCount < 0 then
 		return
 	end
@@ -209,7 +197,7 @@ local function history(key, parent, win)
 	historyCount = nextCount
 
 	nvim_set_current_win(parent)
-	vim.cmd("silent! normal! " .. key)
+	vim.cmd.normal({ args = { key }, bang = true })
 	searchcount(parent, wins.search.win, wins.search.buf)
 	nvim_set_current_win(win)
 end
@@ -218,7 +206,7 @@ vim.api.nvim_create_autocmd("WinEnter", {
 	callback = function()
 		for _, item in pairs(wins) do
 			if vim.api.nvim_get_current_buf() == item.buf then
-				vim.cmd("startinsert")
+				vim.cmd.startinsert()
 			end
 		end
 	end,
