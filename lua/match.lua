@@ -16,6 +16,11 @@ local replaceCount = 0
 
 local ns = vim.api.nvim_create_namespace("searchcount")
 
+---@param title string
+---@param row integer
+---@param parent integer
+---@return integer win
+---@return integer buf
 local function float(title, row, parent)
 	local opts = M.config
 	local width = 30
@@ -82,12 +87,16 @@ local function switch()
 	end
 end
 
+---@param winid integer
 local function nvim_set_current_win(winid)
 	if vim.api.nvim_win_is_valid(winid) then
 		vim.api.nvim_set_current_win(winid)
 	end
 end
 
+---@param parent integer
+---@param win integer
+---@param buf integer
 local function searchcount(parent, win, buf)
 	nvim_set_current_win(parent)
 	local sc = vim.fn.searchcount({ maxcount = 0 })
@@ -101,6 +110,10 @@ local function searchcount(parent, win, buf)
 	})
 end
 
+---@param text? string
+---@param parent integer
+---@param win integer
+---@param buf integer
 local function search(text, parent, win, buf)
 	if not text or text == "" then
 		vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
@@ -122,6 +135,8 @@ local function search(text, parent, win, buf)
 	nvim_set_current_win(win)
 end
 
+---@param parent integer
+---@param win integer
 local function replace(parent, win)
 	if searchText == "" then
 		return vim.notify("Please enter a search term.", vim.log.levels.WARN)
@@ -139,6 +154,10 @@ local function replace(parent, win)
 	close()
 end
 
+---@param key string
+---@param parent integer
+---@param win integer
+---@param buf integer
 local function jump(key, parent, win, buf)
 	if not vim.api.nvim_win_is_valid(parent) or searchText == "" then
 		return
@@ -150,6 +169,8 @@ local function jump(key, parent, win, buf)
 	nvim_set_current_win(win)
 end
 
+---@param key string
+---@param parent integer
 local function replaceJump(key, parent)
 	local searchWin = wins.search.win
 	local searchBuf = wins.search.buf
@@ -167,6 +188,9 @@ local function replaceJump(key, parent)
 	replaceCount = replaceCount + 1
 end
 
+---@param key string
+---@param parent integer
+---@param win integer
 local function history(key, parent, win)
 	key = vim.api.nvim_replace_termcodes(key, true, false, true)
 
@@ -200,6 +224,10 @@ vim.api.nvim_create_autocmd("WinEnter", {
 	end,
 })
 
+---@param parent integer
+---@param win integer
+---@param buf integer
+---@param callback fun(text?: string, parent: integer, win: integer, buf: integer)
 local function onChange(parent, win, buf, callback)
 	vim.api.nvim_buf_attach(buf, false, {
 		on_lines = function()
@@ -217,6 +245,7 @@ local function onChange(parent, win, buf, callback)
 	})
 end
 
+---@param args string
 local function open(args)
 	local parent = vim.api.nvim_get_current_win()
 
@@ -287,7 +316,7 @@ vim.api.nvim_create_user_command("MatchLine", function()
 end, { range = true, nargs = 0, desc = "Match using current line" })
 
 function M.setup(opts)
-	M.config = vim.tbl_deep_extend("force", M.config, opts)
+	M.config = vim.tbl_deep_extend("force", M.config, opts or {})
 end
 
 return M
