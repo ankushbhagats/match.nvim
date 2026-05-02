@@ -9,6 +9,7 @@ M.config = {
 
 local wins = {}
 
+local augroup = vim.api.nvim_create_augroup("Match", { clear = true })
 local searchText = ""
 local replaceText = ""
 local historyCount = 0
@@ -53,6 +54,7 @@ local function float(title, row, parent)
 end
 
 vim.api.nvim_create_autocmd("VimResized", {
+	group = augroup,
 	callback = function()
 		for _, item in pairs(wins) do
 			if vim.api.nvim_win_is_valid(item.win) then
@@ -115,7 +117,7 @@ local function search(text, parent, win, buf)
 	end
 
 	searchText = vim.fn.escape(text, [[\/.*$^~[]])
-	vim.opt.hlsearch = true
+	vim.o.hlsearch = true
 	vim.fn.setreg("/", searchText)
 
 	nvim_set_current_win(parent)
@@ -203,6 +205,7 @@ local function history(key, parent, win)
 end
 
 vim.api.nvim_create_autocmd("WinEnter", {
+	group = augroup,
 	callback = function()
 		for _, item in pairs(wins) do
 			if vim.api.nvim_get_current_buf() == item.buf then
@@ -253,6 +256,7 @@ local function open(args)
 		vim.keymap.set({ "n", "i" }, "<Esc>", close, { buffer = item.buf })
 		vim.keymap.set({ "n", "i" }, "<C-q>", close, { buffer = item.buf })
 		vim.keymap.set({ "n", "i" }, "<Tab>", switch, { buffer = item.buf })
+		vim.keymap.set({ "n", "i" }, "<S-Tab>", switch, { buffer = item.buf })
 
 		if name == "search" then
 			vim.keymap.set({ "n", "i" }, "<C-r>", function() end, { buffer = item.buf })
