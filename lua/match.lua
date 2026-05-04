@@ -262,7 +262,7 @@ local function open(args)
 
 	nvim_set_current_win(searchWin)
 	vim.api.nvim_buf_set_lines(searchBuf, 0, -1, false, { args })
-	vim.api.nvim_win_set_cursor(searchWin, { 1, #args })
+	vim.api.nvim_win_set_cursor(searchWin, { 1, args:len() })
 
 	for name, item in pairs(wins) do
 		vim.keymap.set({ "n", "i" }, "<Esc>", close, { buffer = item.buf })
@@ -310,13 +310,11 @@ vim.api.nvim_create_user_command("Match", function(opts)
 end, { nargs = "*", desc = "Search and Replace" })
 
 vim.api.nvim_create_user_command("MatchWord", function()
-	local word = vim.fn.expand("<cword>")
-	open(word)
+	open(vim.fn.expand("<cword>"))
 end, { nargs = 0, desc = "Match using word under cursor" })
 
 vim.api.nvim_create_user_command("MatchLine", function()
-	local line = vim.fn.getline(".")
-	open(line)
+	open(vim.fn.getline("."))
 end, { range = true, nargs = 0, desc = "Match using current line" })
 
 ---@param opts? MatchOpts
