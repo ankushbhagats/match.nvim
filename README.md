@@ -1,13 +1,16 @@
 <div align="center">
-<h1>match.nvim</h1>
-<p>A minimal Neovim plugin for floating search & replace with live match tracking, navigation, and quick replacements.</p>
+
+# match.nvim
+
+A minimal Neovim plugin for floating search & replace with live match tracking, navigation, and quick replacements.
+
 </div>
 
 <img alt="Image" src="./src/match.gif" />
 
 ---
 
-### ✨ Features
+## ✨ Features
 
 - Floating **Search** and **Replace** windows
 - Live search highlighting using `/`
@@ -20,68 +23,74 @@
 
 ---
 
-### 📦 Installation
+## 📦 Installation
 
 Using `lazy.nvim`:
 
 ```lua
 {
   "ankushbhagats/match.nvim",
-  config = true,
+  opts = {},
 }
 ```
 
-Using `packer.nvim`:
+Using `pckr.nvim`:
 
 ```lua
-use {
-  "ankushbhagats/match.nvim",
-  config = function()
-    require("match").setup()
-  end
-}
+require("packer").add({
+  {
+    "ankushbhagats/match.nvim",
+    config = function()
+      require("match").setup()
+    end,
+  },
+})
 ```
 
-### Commands
+---
+
+## Commands
+
+| Command         | Description                           |
+|-----------------|---------------------------------------|
+| `:Match {text}` | Open Match UI with given search text  |
+| `:MatchWord`    | Open Match UI using word under cursor |
+| `:MatchLine`    | Open Match UI using current line      |
 
 
-| Command | Description |
-|--------|-------------|
-| `:Match {text}` | Open Match UI with given search text |
-| `:MatchWord` | Open Match UI using word under cursor |
-| `:MatchLine` | Open Match UI using current line |
+---
+
+## ⌨️ Keybindings
+
+| Key               | Action                        |
+|-------------------|-------------------------------|
+| `<Tab>`           | Switch between search/replace |
+| `<Esc>` / `<C-q>` | Close UI                      |
 
 
-### ⌨️ Keybindings
+### Search Window
+
+| Key      | Action                   |
+|----------|--------------------------|
+| `<Up>`   | Jump to previous match   |
+| `<Down>` | Jump to next match       |
+| `<CR>`   | Switch to replace window |
 
 
-| Key | Action |
-|-----|--------|
-| `<Tab>` | Switch between search/replace |
-| `<Esc>` / `<C-q>` | Close UI |
+### Replace Window
+
+| Key      | Action                 |
+|----------|------------------------|
+| `<CR>`   | Replace all matches    |
+| `<Up>`   | Replace previous match |
+| `<Down>` | Replace next match     |
+| `<C-u>`  | Undo replacement       |
+| `<C-r>`  | Redo replacement       |
 
 
-#### Search window
+---
 
-| Key | Action |
-|-----|--------|
-| `<Up>` | Jump to previous match |
-| `<Down>` | Jump to next match |
-| `<CR>` | Switch to replace window |
-
-
-#### Replace window
-
-| Key | Action |
-|-----|--------|
-| `<CR>` | Replace all matches |
-| `<Up>` | Replace previous match |
-| `<Down>` | Replace next match |
-| `<C-u>` | Undo replacement |
-| `<C-r>` | Redo replacement |
-
-
-### ⚙️ Configuration
+## ⚙️ Configuration
 
 ```lua
 require("match").setup({
@@ -92,7 +101,10 @@ require("match").setup({
 })
 ```
 
-### 🧠 How it works
+---
+
+## 🧠 How it works
+
 - Search uses / register (`vim.fn.setreg("/")`)
 - Matches tracked via `vim.fn.searchcount()`
 - Replacements use :`substitute` internally
