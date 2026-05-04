@@ -166,9 +166,9 @@ local function jump(key, win, buf)
 		return
 	end
 
-	nvim_set_current_win(parentWin)
-	vim.cmd("silent! normal! " .. key)
-	searchcount(win, buf)
+	nvim_set_current_win(parent)
+  vim.cmd("silent! normal! " .. key)
+	searchcount(parent, win, buf)
 	nvim_set_current_win(win)
 end
 
@@ -184,9 +184,9 @@ local function replaceJump(key)
 
 	nvim_set_current_win(parentWin)
 	-- vim.fn.search(searchText, key)
-	vim.cmd('silent! normal! "_cg' .. key .. replaceText .. "\27")
+  vim.cmd('silent! normal! "_cg' .. key .. replaceText .. "\27")
 	vim.cmd("silent! normal! " .. key)
-	searchcount(searchWin, searchBuf)
+	searchcount(parent, searchWin, searchBuf)
 	nvim_set_current_win(replaceWin)
 	replaceCount = replaceCount + 1
 end
@@ -203,9 +203,9 @@ local function history(key, win)
 
 	historyCount = nextCount
 
-	nvim_set_current_win(parentWin)
-	vim.cmd("silent! normal! " .. key)
-	searchcount(wins.search.win, wins.search.buf)
+	nvim_set_current_win(parent)
+  vim.cmd("silent! normal! " .. key)
+	searchcount(parent, wins.search.win, wins.search.buf)
 	nvim_set_current_win(win)
 end
 
