@@ -5,15 +5,19 @@ local M = {}
 ---@field style? "minimal"
 ---@field border? string
 ---@field border_hl? string
+---@field anchor? "NE"|"NW"|"SE"|"SW"
 M.config = {
 	prefix = "",
 	style = "minimal",
 	border = "rounded",
 	border_hl = "Function",
+	anchor = "NE",
 }
 
 local wins = {}
 
+local old_win = 0 ---@type integer
+local old_pos = nil ---@type [integer, integer]|nil
 local augroup = vim.api.nvim_create_augroup("Match", { clear = true })
 local searchText = ""
 local replaceText = ""
@@ -28,30 +32,29 @@ local ns = vim.api.nvim_create_namespace("searchcount")
 ---@return integer win
 ---@return integer buf
 local function float(title, row, parent)
-	local opts = M.config
 	local width = 30
 	local height = 1
 	local buf = vim.api.nvim_create_buf(false, true)
 	local win = vim.api.nvim_open_win(buf, true, {
-		anchor = "NE",
+		anchor = M.config.anchor,
 		title = title,
 		width = width,
 		height = height,
 		row = row,
 		col = vim.o.columns,
 		relative = "editor",
-		style = opts.style,
-		border = opts.border,
+		style = M.config.style,
+		border = M.config.border,
 	})
 
 	vim.wo[win].winhl = ("NormalFloat:Normal,FloatBorder:%s,Search:None,IncSearch:None,CurSearch:None"):format(
-		opts.border_hl
+		M.config.border_hl
 	)
 	vim.bo[buf].buftype = "prompt"
 	vim.bo[buf].filetype = "match"
 	vim.bo[buf].bufhidden = "wipe"
 	vim.bo[buf].swapfile = false
-	vim.fn.prompt_setprompt(buf, opts.prefix)
+	vim.fn.prompt_setprompt(buf, M.config.prefix)
 
 	wins[title:lower()] = { win = win, buf = buf, row = row, parent = parent }
 
@@ -76,6 +79,10 @@ vim.api.nvim_create_autocmd("VimResized", {
 local function close()
 	for _, item in pairs(wins) do
 		pcall(vim.api.nvim_win_close, item.win, true)
+	end
+	vim.cmd.noh()
+	if old_pos then
+		vim.api.nvim_win_set_cursor(old_win, old_pos)
 	end
 end
 
@@ -243,13 +250,13 @@ end
 
 ---@param args string
 local function open(args)
-	local parent = vim.api.nvim_get_current_win()
+	old_win = vim.api.nvim_get_current_win()
+	old_pos = vim.api.nvim_win_get_cursor(old_win)
+	local searchWin, searchBuf = float("Search", 1, old_win)
+	local replaceWin, replaceBuf = float("Replace", 4, old_win)
 
-	local searchWin, searchBuf = float("Search", 1, parent)
-	local replaceWin, replaceBuf = float("Replace", 4, parent)
-
-	onChange(parent, searchWin, searchBuf, search)
-	onChange(parent, replaceWin, replaceBuf, function(text)
+	onChange(old_win, searchWin, searchBuf, search)
+	onChange(old_win, replaceWin, replaceBuf, function(text)
 		replaceText = text
 	end)
 
@@ -268,31 +275,31 @@ local function open(args)
 			vim.keymap.set({ "n", "i" }, "<CR>", switch, { buffer = item.buf })
 
 			vim.keymap.set({ "n", "i" }, "<Up>", function()
-				jump("N", parent, item.win, item.buf)
+				jump("N", old_win, item.win, item.buf)
 			end, { buffer = item.buf })
 
 			vim.keymap.set({ "n", "i" }, "<Down>", function()
-				jump("n", parent, item.win, item.buf)
+				jump("n", old_win, item.win, item.buf)
 			end, { buffer = item.buf })
 		elseif name == "replace" then
 			vim.keymap.set({ "n", "i" }, "<CR>", function()
-				replace(parent, item.win)
+				replace(old_win, item.win)
 			end, { buffer = item.buf })
 
 			vim.keymap.set({ "n", "i" }, "<Up>", function()
-				replaceJump("N", parent)
+				replaceJump("N", old_win)
 			end, { buffer = item.buf })
 
 			vim.keymap.set({ "n", "i" }, "<Down>", function()
-				replaceJump("n", parent)
+				replaceJump("n", old_win)
 			end, { buffer = item.buf })
 
 			vim.keymap.set({ "n", "i" }, "<C-u>", function()
-				history("u", parent, item.win)
+				history("u", old_win, item.win)
 			end, { buffer = item.buf })
 
 			vim.keymap.set({ "n", "i" }, "<C-r>", function()
-				history("<C-r>", parent, item.win)
+				history("<C-r>", old_win, item.win)
 			end, { buffer = item.buf })
 		end
 	end
