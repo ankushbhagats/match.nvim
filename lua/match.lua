@@ -1,5 +1,10 @@
 local M = {}
 
+---@class MatchOpts
+---@field prefix? string
+---@field style? "minimal"
+---@field border? string
+---@field border_hl? string
 M.config = {
 	prefix = "",
 	style = "minimal",
@@ -307,6 +312,7 @@ vim.api.nvim_create_user_command("MatchLine", function()
 	open(line)
 end, { range = true, nargs = 0, desc = "Match using current line" })
 
+---@param opts? MatchOpts
 function M.setup(opts)
 	M.config = vim.tbl_deep_extend("force", M.config, opts or {})
 end
