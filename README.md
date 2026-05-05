@@ -95,6 +95,7 @@ require("packer").add({
 ```lua
 require("match").setup({
   prefix = "",
+  anchor = "NE",
   style = "minimal",
   border = "rounded",
   border_hl = "Function",
