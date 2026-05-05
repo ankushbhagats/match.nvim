@@ -5,15 +5,19 @@ local M = {}
 ---@field style? "minimal"
 ---@field border? string
 ---@field border_hl? string
+---@field anchor? "NE"|"NW"|"SE"|"SW"
 M.config = {
 	prefix = "",
 	style = "minimal",
 	border = "rounded",
 	border_hl = "Function",
+	anchor = "NE",
 }
 
 local wins = {}
 
+local parentWin = 0 ---@type integer
+local parentPos = nil ---@type [integer, integer]|nil
 local augroup = vim.api.nvim_create_augroup("Match", { clear = true })
 local searchText = ""
 local replaceText = ""
@@ -24,36 +28,34 @@ local ns = vim.api.nvim_create_namespace("searchcount")
 
 ---@param title string
 ---@param row integer
----@param parent integer
 ---@return integer win
 ---@return integer buf
-local function float(title, row, parent)
-	local opts = M.config
+local function float(title, row)
 	local width = 30
 	local height = 1
 	local buf = vim.api.nvim_create_buf(false, true)
 	local win = vim.api.nvim_open_win(buf, true, {
-		anchor = "NE",
+		anchor = M.config.anchor,
 		title = title,
 		width = width,
 		height = height,
 		row = row,
 		col = vim.o.columns,
 		relative = "editor",
-		style = opts.style,
-		border = opts.border,
+		style = M.config.style,
+		border = M.config.border,
 	})
 
 	vim.wo[win].winhl = ("NormalFloat:Normal,FloatBorder:%s,Search:None,IncSearch:None,CurSearch:None"):format(
-		opts.border_hl
+		M.config.border_hl
 	)
 	vim.bo[buf].buftype = "prompt"
 	vim.bo[buf].filetype = "match"
 	vim.bo[buf].bufhidden = "wipe"
 	vim.bo[buf].swapfile = false
-	vim.fn.prompt_setprompt(buf, opts.prefix)
+	vim.fn.prompt_setprompt(buf, M.config.prefix)
 
-	wins[title:lower()] = { win = win, buf = buf, row = row, parent = parent }
+	wins[title:lower()] = { win = win, buf = buf, row = row }
 
 	return win, buf
 end
@@ -77,6 +79,10 @@ local function close()
 	for _, item in pairs(wins) do
 		pcall(vim.api.nvim_win_close, item.win, true)
 	end
+	vim.cmd.noh()
+	if parentPos then
+		vim.api.nvim_win_set_cursor(parentWin, parentPos)
+	end
 end
 
 local function switch()
@@ -94,11 +100,10 @@ local function nvim_set_current_win(winid)
 	pcall(vim.api.nvim_set_current_win, winid)
 end
 
----@param parent integer
 ---@param win integer
 ---@param buf integer
-local function searchcount(parent, win, buf)
-	nvim_set_current_win(parent)
+local function searchcount(win, buf)
+	nvim_set_current_win(parentWin)
 	local sc = vim.fn.searchcount({ maxcount = 0 })
 	nvim_set_current_win(win)
 
@@ -110,10 +115,9 @@ local function searchcount(parent, win, buf)
 end
 
 ---@param text? string
----@param parent integer
 ---@param win integer
 ---@param buf integer
-local function search(text, parent, win, buf)
+local function search(text, win, buf)
 	if not text or text == "" then
 		vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
 		vim.cmd.noh()
@@ -125,24 +129,23 @@ local function search(text, parent, win, buf)
 	vim.o.hlsearch = true
 	vim.fn.setreg("/", searchText)
 
-	nvim_set_current_win(parent)
+	nvim_set_current_win(parentWin)
 
 	vim.fn.cursor(1, 1)
 	vim.fn.search(searchText, "W")
-	searchcount(parent, win, buf)
+	searchcount(win, buf)
 
 	nvim_set_current_win(win)
 end
 
----@param parent integer
 ---@param win integer
-local function replace(parent, win)
+local function replace(win)
 	if searchText == "" then
 		vim.notify("Please enter a search term.", vim.log.levels.WARN)
 		return
 	end
 
-	nvim_set_current_win(parent)
+	nvim_set_current_win(parentWin)
 
 	if vim.fn.searchcount().current < 1 then
 		nvim_set_current_win(win)
@@ -156,44 +159,41 @@ local function replace(parent, win)
 end
 
 ---@param key string
----@param parent integer
 ---@param win integer
 ---@param buf integer
-local function jump(key, parent, win, buf)
-	if not vim.api.nvim_win_is_valid(parent) or searchText == "" then
+local function jump(key, win, buf)
+	if not vim.api.nvim_win_is_valid(parentWin) or searchText == "" then
 		return
 	end
 
 	nvim_set_current_win(parent)
-	vim.cmd.normal({ args = { key }, bang = true })
+  vim.cmd("silent! normal! " .. key)
 	searchcount(parent, win, buf)
 	nvim_set_current_win(win)
 end
 
 ---@param key string
----@param parent integer
-local function replaceJump(key, parent)
+local function replaceJump(key)
 	local searchWin = wins.search.win
 	local searchBuf = wins.search.buf
 	local replaceWin = wins.replace.win
 
-	if not vim.api.nvim_win_is_valid(parent) or searchText == "" then
+	if not vim.api.nvim_win_is_valid(parentWin) or searchText == "" then
 		return
 	end
 
-	nvim_set_current_win(parent)
+	nvim_set_current_win(parentWin)
 	-- vim.fn.search(searchText, key)
-	vim.cmd.normal({ args = { '"_cg' .. key .. replaceText .. "\27" }, bang = true })
-	vim.cmd.normal({ args = { key }, bang = true })
+  vim.cmd('silent! normal! "_cg' .. key .. replaceText .. "\27")
+	vim.cmd("silent! normal! " .. key)
 	searchcount(parent, searchWin, searchBuf)
 	nvim_set_current_win(replaceWin)
 	replaceCount = replaceCount + 1
 end
 
 ---@param key string
----@param parent integer
 ---@param win integer
-local function history(key, parent, win)
+local function history(key, win)
 	key = vim.api.nvim_replace_termcodes(key, true, false, true)
 
 	local nextCount = historyCount + (key == "u" and 1 or -1)
@@ -204,7 +204,7 @@ local function history(key, parent, win)
 	historyCount = nextCount
 
 	nvim_set_current_win(parent)
-	vim.cmd.normal({ args = { key }, bang = true })
+  vim.cmd("silent! normal! " .. key)
 	searchcount(parent, wins.search.win, wins.search.buf)
 	nvim_set_current_win(win)
 end
@@ -220,11 +220,10 @@ vim.api.nvim_create_autocmd("WinEnter", {
 	end,
 })
 
----@param parent integer
 ---@param win integer
 ---@param buf integer
----@param callback fun(text?: string, parent: integer, win: integer, buf: integer)
-local function onChange(parent, win, buf, callback)
+---@param callback fun(text?: string, win: integer, buf: integer)
+local function onChange(win, buf, callback)
 	vim.api.nvim_buf_attach(buf, false, {
 		on_lines = function()
 			vim.schedule(function()
@@ -235,7 +234,7 @@ local function onChange(parent, win, buf, callback)
 				local line = vim.api.nvim_buf_get_lines(buf, 0, 1, false)[1] or ""
 				local prefix = vim.fn.prompt_getprompt(buf)
 				local text = line:sub(#prefix + 1) -- remove the prefix
-				callback(text, parent, win, buf)
+				callback(text, win, buf)
 			end)
 		end,
 	})
@@ -243,19 +242,19 @@ end
 
 ---@param args string
 local function open(args)
-	local parent = vim.api.nvim_get_current_win()
+	parentWin = vim.api.nvim_get_current_win()
+	parentPos = vim.api.nvim_win_get_cursor(parentWin)
+	local searchWin, searchBuf = float("Search", 1)
+	local replaceWin, replaceBuf = float("Replace", 4)
 
-	local searchWin, searchBuf = float("Search", 1, parent)
-	local replaceWin, replaceBuf = float("Replace", 4, parent)
-
-	onChange(parent, searchWin, searchBuf, search)
-	onChange(parent, replaceWin, replaceBuf, function(text)
+	onChange(searchWin, searchBuf, search)
+	onChange(replaceWin, replaceBuf, function(text)
 		replaceText = text
 	end)
 
 	nvim_set_current_win(searchWin)
 	vim.api.nvim_buf_set_lines(searchBuf, 0, -1, false, { args })
-	vim.api.nvim_win_set_cursor(searchWin, { 1, #args })
+	vim.api.nvim_win_set_cursor(searchWin, { 1, args:len() })
 
 	for name, item in pairs(wins) do
 		vim.keymap.set({ "n", "i" }, "<Esc>", close, { buffer = item.buf })
@@ -268,31 +267,31 @@ local function open(args)
 			vim.keymap.set({ "n", "i" }, "<CR>", switch, { buffer = item.buf })
 
 			vim.keymap.set({ "n", "i" }, "<Up>", function()
-				jump("N", parent, item.win, item.buf)
+				jump("N", item.win, item.buf)
 			end, { buffer = item.buf })
 
 			vim.keymap.set({ "n", "i" }, "<Down>", function()
-				jump("n", parent, item.win, item.buf)
+				jump("n", item.win, item.buf)
 			end, { buffer = item.buf })
 		elseif name == "replace" then
 			vim.keymap.set({ "n", "i" }, "<CR>", function()
-				replace(parent, item.win)
+				replace(item.win)
 			end, { buffer = item.buf })
 
 			vim.keymap.set({ "n", "i" }, "<Up>", function()
-				replaceJump("N", parent)
+				replaceJump("N")
 			end, { buffer = item.buf })
 
 			vim.keymap.set({ "n", "i" }, "<Down>", function()
-				replaceJump("n", parent)
+				replaceJump("n")
 			end, { buffer = item.buf })
 
 			vim.keymap.set({ "n", "i" }, "<C-u>", function()
-				history("u", parent, item.win)
+				history("u", item.win)
 			end, { buffer = item.buf })
 
 			vim.keymap.set({ "n", "i" }, "<C-r>", function()
-				history("<C-r>", parent, item.win)
+				history("<C-r>", item.win)
 			end, { buffer = item.buf })
 		end
 	end
@@ -303,13 +302,11 @@ vim.api.nvim_create_user_command("Match", function(opts)
 end, { nargs = "*", desc = "Search and Replace" })
 
 vim.api.nvim_create_user_command("MatchWord", function()
-	local word = vim.fn.expand("<cword>")
-	open(word)
+	open(vim.fn.expand("<cword>"))
 end, { nargs = 0, desc = "Match using word under cursor" })
 
 vim.api.nvim_create_user_command("MatchLine", function()
-	local line = vim.fn.getline(".")
-	open(line)
+	open(vim.fn.getline("."))
 end, { range = true, nargs = 0, desc = "Match using current line" })
 
 ---@param opts? MatchOpts
