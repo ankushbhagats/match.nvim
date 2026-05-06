@@ -110,3 +110,6 @@ require("match").setup({
 - Matches tracked via `vim.fn.searchcount()`
 - Replacements use :`substitute` internally
 - Live updates via `buf_attach` (on_lines)
+
+## 📄 License
+GNU General Public License v3
