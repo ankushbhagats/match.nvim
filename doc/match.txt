@@ -1,0 +1,130 @@
+*match.nvim*   Floating search & replace UI for Neovim
+
+Author: Ankush Bhagat
+License: GNU GPL v3
+
+==============================================================================
+CONTENTS                                                      *match*
+
+  1. Features .................................... |match-features|
+  2. Installation ................................ |match-install|
+  3. Commands .................................... |match-commands|
+  4. Keymaps ..................................... |match-keymaps|
+  5. Configuration ............................... |match-config|
+  6. How it works ................................ |match-how|
+  7. License ..................................... |match-license|
+
+==============================================================================
+FEATURES                                                     *match-features*
+
+- Floating Search and Replace windows
+- Live search highlighting using '/'
+- Match counter display: [current/total]
+- Jump between matches (n/N style navigation)
+- Replace current match or all matches
+- Undo/redo-style replacement history
+- Auto-resizing floating windows on VimResized
+- Minimal UI with configurable border and style
+
+
+==============================================================================
+INSTALLATION                                                  *match-install*
+
+lazy.nvim ~
+
+>lua
+  {
+    "ankushbhagats/match.nvim",
+    opts = {},
+  }
+<
+
+pckr.nvim ~
+
+>lua
+  require("packer").add({
+    {
+      "ankushbhagats/match.nvim",
+      config = function()
+        require("match").setup()
+      end,
+    },
+  })
+<
+
+
+==============================================================================
+COMMANDS                                                     *match-commands*
+
+:Match {text}                                                 *:Match*
+        Open Match UI using the given search text.
+
+:MatchWord                                                    *:MatchWord*
+        Open Match UI using the word under cursor.
+
+:MatchLine                                                    *:MatchLine*
+        Open Match UI using the current line content.
+
+
+==============================================================================
+KEYBINDINGS                                                   *match-keymaps*
+
+Global keys ~
+
+<Tab>           Switch between search and replace window
+<Esc> / <C-q>   Close Match UI
+
+Search window keys ~
+
+<Up>            Jump to previous match
+<Down>          Jump to next match
+<CR>            Switch to replace window
+
+Replace window keys ~
+
+<CR>            Replace all matches
+<Up>            Replace previous match
+<Down>          Replace next match
+<C-u>           Undo replacement
+<C-r>           Redo replacement
+
+
+==============================================================================
+CONFIGURATION                                                  *match-config*
+
+Default setup ~
+
+>lua
+  require("match").setup({
+    prefix = "",
+    anchor = "NE",
+    style = "minimal",
+    border = "rounded",
+    border_hl = "Function",
+  })
+<
+
+Options ~
+
+prefix        (string) Prefix text shown in UI.
+anchor        (string) Floating window anchor position.
+style         (string) Floating window style.
+border        (string) Border style: "rounded", "single", etc.
+border_hl     (string) Highlight group for border.
+
+
+==============================================================================
+HOW IT WORKS                                                     *match-how*
+
+- Search uses '/' register via |setreg()|
+- Matches are tracked using |searchcount()|
+- Replacements are performed using :substitute internally
+- Live updates are handled via buffer attach (on_lines callback)
+
+
+==============================================================================
+LICENSE                                                     *match-license*
+
+GNU General Public License v3
+
+vim:tw=78:ts=8:ft=help:norl:
